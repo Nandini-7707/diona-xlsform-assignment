@@ -8,22 +8,6 @@ data collection form.
 
 - `Criminal_Risk_Assessment_Request.xlsx` — the XLSForm itself
   (3 sheets: `survey`, `choices`, `settings`)
-- `build_xlsform.py` — the script used to generate it (kept for
-  transparency/reproducibility, not required by the assignment)
-
-## ⚠️ Before recording your video
-
-1. Go to **https://getodk.org/xlsform/**, upload
-   `Criminal_Risk_Assessment_Request.xlsx`, and confirm it
-   converts with **no errors**. If it errors, read the error
-   message (it'll point at a row/column) and fix that cell in the
-   xlsx, then re-upload and re-check.
-2. Read through the "Concepts used" section below a couple of
-   times — this is what you'll need to explain **in your own
-   words** on camera (their rule this round: no AI-scripted
-   narration).
-
----
 
 ## How a PDF field maps to an XLSForm row — the core idea
 

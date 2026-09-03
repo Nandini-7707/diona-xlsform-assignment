@@ -6,122 +6,269 @@
 
 # Diona Technologies — 2nd Assignment — Criminal Risk Assessment Request (XLSForm)
 
-An ODK XLSForm rebuilding the Manitoba Families "Criminal Risk
-Assessment Request" PDF (2 pages) as a structured, mobile-ready
-data collection form.
+An ODK XLSForm recreating the Manitoba Families **"Criminal Risk Assessment Request"** PDF (2 pages) as a structured, mobile-ready digital data collection form.
+
+## Assignment Overview
+
+The objective of this assignment was to convert the provided paper/PDF form into a functional **ODK-compatible XLSForm**, while preserving the original form's fields, sections, required-field conventions, validation requirements, conditional logic, and relationships between fields.
+
+The completed form is designed to make the paper-based process easier to complete digitally while maintaining the information and logic specified in the original document.
 
 ## Files
 
-- `Criminal_Risk_Assessment_Request.xlsx` — the XLSForm itself
-  (3 sheets: `survey`, `choices`, `settings`)
+* `Criminal_Risk_Assessment_Request.xlsx` — The completed XLSForm containing:
 
-## How a PDF field maps to an XLSForm row — the core idea
+  * `survey` sheet
+  * `choices` sheet
+  * `settings` sheet
+---
 
-Every question on the paper form becomes **one row** in the
-`survey` sheet. Three columns matter most for a basic question:
-- `type` — what kind of answer (text, date, select_one, etc.)
-- `name` — the internal variable name (no spaces, used in logic)
-- `label` — what the user actually sees on screen
+# How a PDF Field Maps to an XLSForm Row
 
-Multiple-choice questions (radio buttons / checkboxes) don't list
-their options in the `survey` sheet — options go in a **separate
-`choices` sheet**, and the `survey` row just references a "list
-name" that groups them. That's why you'll see e.g.
-`select_one gender` in `type`, and then in `choices` there are two
-rows both with `gender` in the `list name` column (`male`,
-`female`).
+Every question on the paper form becomes **one row** in the `survey` sheet.
 
-## Concepts used in this form (explain these yourself, in your own words)
+For a basic question, three columns are particularly important:
 
-**1. `begin group` / `end group`**
-The PDF has clear visual sections (Consent, Subject Information,
-Identification, the page-2 Assessment Request). I mirrored each
-section as a `group` in the form — this keeps related questions
-together and lets ODK Collect show them as one screen
-(`appearance: field-list` makes all questions in that group appear
-on a single scrolling screen instead of one-question-per-screen).
+* `type` — defines what kind of answer is expected (`text`, `date`, `select_one`, etc.)
+* `name` — the internal variable name used by the form and its logic
+* `label` — the question or text displayed to the user
 
-**2. `select_one` vs `select_multiple`**
-- `select_one` = only one answer possible (radio buttons) — used
-  for Gender, since a person is either Male or Female on this form.
-- `select_multiple` = more than one can be ticked at once
-  (checkboxes) — used for the ID-types question (someone could
-  provide a Birth Certificate *and* a Health Card), and for
-  "Reason for Risk Assessment" (the PDF shows these as independent
-  checkboxes, not a single choice).
+Multiple-choice questions do not contain their individual options directly in the `survey` sheet. Instead, the options are defined in the separate `choices` sheet.
 
-**3. `relevant` (conditional/skip logic)**
-Some fields on the PDF only make sense some of the time:
-- "Other (specify ID)" text box only matters `relevant` (visible)
-  if "Other" was actually selected in the ID-types question —
-  written as `selected(${idTypes},'other')`.
-- Same pattern for the MB Driver's Licence number field.
-- The Witness signature is only needed if the person *did*
-  consent, so it's `relevant` only when Unconsented = No.
+For example:
 
-This avoids showing irrelevant/confusing fields to the person
-filling out the form on a tablet.
+```text
+survey:
+select_one gender
 
-**4. `required` and `required_message`**
-The PDF itself says: *"NOTE – SECTIONS MARKED WITH AN ASTERISK (*)
-ARE REQUIRED"* on page 2. I only marked those exact fields as
-`required = yes` in the form (Agency Name, Reason for Assessment,
-Assigned Worker, Submitting Designate, Designate Phone, Designate
-Email, Request Date) — matching the PDF's own required/optional
-convention rather than guessing.
+choices:
+gender | male
+gender | female
+```
 
-**5. `constraint` (validation)**
-Designate Email has a `constraint` using a regex pattern that
-checks it looks like a real email address, with a
-`constraint_message` telling the user what's wrong if it fails.
-This is basic input validation — the paper form can't stop someone
-writing a broken email, but the digital form can.
+The `list_name` connects the question in the `survey` sheet with its available choices.
 
-**6. `calculate` + `read_only` (the technique borrowed from the sample form)**
-The sample XLSForm they gave uses `calculate` rows to pull a value
-(via `pulldata()`), then a visible `text`/`read_only` row to
-*display* that calculated value to the user without letting them
-edit it directly.
+---
 
-I reused that same pattern for a different purpose: page 2 of the
-PDF has a field "Name of Person Being Assessed" with a note
-*"Must match information on page 1."* Rather than making the user
-re-type the name (risking a typo/mismatch), I used a `calculate`
-row (`concat(${firstName}, ' ', ${lastName})`) to build the full
-name automatically from the page-1 answers, then displayed it as
-`read_only = true` on page 2. This guarantees the two pages always
-match, which is exactly the requirement the PDF is asking for.
+# Concepts Used in This Form
 
-**7. `note` type**
-The PDF has several large non-editable text blocks (the full legal
-consent paragraph, the CPIC/NICHE research explanation, the final
-disclaimer about not replacing a criminal records check). These
-aren't questions, so I used the `note` type — it displays text to
-the user with no input field, same as a static instructional block.
+## 1. `begin group` / `end group`
 
-**8. `image` type with `signature` appearance**
-Two fields on the PDF are physical signatures (person being
-assessed, witness). ODK supports capturing a hand-drawn signature
-via `type: image` with `appearance: signature`, which opens a
-signature-capture pad instead of the camera.
+The PDF contains clearly separated sections, including:
 
-**9. Consolidating Day/Month/Year into one `date` field**
-The PDF prints Date of Birth as three separate boxes (Day / Month
-/ Year). A native ODK `date` question already gives a proper date
-picker covering all three in one control, so I used a single
-`date` field rather than three separate `integer` fields — this is
-a deliberate adaptation to the digital medium, not a 1:1 visual
-copy of the paper layout.
+* Consent
+* Subject Information
+* Identification
+* Assessment Request
 
-## Assumptions
+These sections were represented using `begin group` and `end group` rows in the XLSForm.
 
-- Only the fields explicitly marked with `*` on page 2 are treated
-  as required — page 1 has no asterisks in the source PDF, so
-  those fields are left optional.
-- "Unconsented" is modelled as a `select_one yes_no` rather than a
-  bare checkbox, since XLSForm doesn't have a plain boolean
-  checkbox type — `select_one yes_no` is the standard idiom for
-  that.
-- "Reason for Risk Assessment" is modelled as `select_multiple`
-  (see Concepts #2) since the three options are printed as
-  independent checkboxes on the PDF, not a single radio choice.
+The groups help keep related questions together and make the digital form easier to navigate.
+
+The `field-list` appearance was used where appropriate so related questions can be presented together rather than forcing the user to move through every individual question separately.
+
+---
+
+## 2. `select_one` vs `select_multiple`
+
+The appropriate XLSForm question type was selected based on how the options are represented in the original PDF.
+
+### `select_one`
+
+`select_one` allows the user to select only one option.
+
+It is used for fields such as **Gender**, where the form presents mutually exclusive choices.
+
+### `select_multiple`
+
+`select_multiple` allows multiple options to be selected simultaneously.
+
+It is used for:
+
+* ID Types
+* Reason for Risk Assessment
+
+This matches the PDF's use of independent checkboxes, where more than one option can be applicable.
+
+---
+
+## 3. `relevant` — Conditional / Skip Logic
+
+The `relevant` column was used for fields that should only appear when they are applicable.
+
+For example, the **Other (specify ID)** field is displayed only when `Other` is selected in the ID-types question.
+
+This is implemented using logic such as:
+
+```text
+selected(${idTypes}, 'other')
+```
+
+The same approach is used for fields such as the **MB Driver's Licence number**, where the field should only be displayed when the corresponding identification type has been selected.
+
+The **Witness Signature** is also conditionally displayed based on the consent response.
+
+This prevents users from seeing fields that are irrelevant to their selections.
+
+---
+
+## 4. `required` and `required_message`
+
+The original PDF states:
+
+> "NOTE – SECTIONS MARKED WITH AN ASTERISK (*) ARE REQUIRED"
+
+The XLSForm follows this convention rather than arbitrarily making every field mandatory.
+
+The fields explicitly marked as required in the PDF were configured with:
+
+```text
+required = yes
+```
+
+These include fields such as:
+
+* Agency Name
+* Reason for Assessment
+* Assigned Worker
+* Submitting Designate
+* Designate Phone
+* Designate Email
+* Request Date
+
+Required-field messages are also provided where appropriate to clearly communicate when a required response is missing.
+
+---
+
+## 5. `constraint` — Input Validation
+
+Digital forms can perform validation that is not possible with a paper form.
+
+The **Designate Email** field uses a regular-expression-based constraint to check that the entered value follows a valid email format.
+
+A corresponding `constraint_message` informs the user when the entered value does not satisfy the expected format.
+
+This provides basic data-quality validation before the form can be submitted.
+
+---
+
+## 6. `calculate` + `read_only`
+
+The sample XLSForm provided as part of the assignment demonstrated the use of calculated values together with read-only fields.
+
+That concept was adapted for the **Name of Person Being Assessed** field on page 2.
+
+The PDF contains the instruction:
+
+> "Must match information on page 1."
+
+Instead of asking the user to type the person's name again, the form automatically constructs the name from the information entered on page 1.
+
+The calculation follows the concept:
+
+```text
+concat(${firstName}, ' ', ${lastName})
+```
+
+The calculated value is then displayed using a read-only field.
+
+This ensures that the name displayed on page 2 remains consistent with the information entered on page 1 and eliminates the possibility of a second manual entry containing a typo or mismatch.
+
+---
+
+## 7. `note` Type
+
+Some content in the PDF is informational rather than something the user needs to answer.
+
+Examples include:
+
+* The legal consent paragraph
+* CPIC/NICHE research information
+* The disclaimer regarding criminal records checks
+
+These sections were represented using the XLSForm `note` type.
+
+A `note` displays information to the user without creating an input field.
+
+This allows the important legal and instructional content from the original form to remain visible in the digital version.
+
+---
+
+## 8. `image` Type with `signature` Appearance
+
+The original PDF contains physical signature fields.
+
+These were implemented using:
+
+```text
+type: image
+appearance: signature
+```
+
+This allows the user to capture a handwritten signature digitally rather than entering it as text.
+
+The form includes signature capture for the relevant individuals, including:
+
+* Person Being Assessed
+* Witness
+
+---
+
+## 9. Consolidating Day / Month / Year into a `date` Field
+
+The PDF displays Date of Birth using separate:
+
+* Day
+* Month
+* Year
+
+boxes.
+
+For the digital form, these were represented using a single native XLSForm:
+
+```text
+type: date
+```
+
+This provides an appropriate date-selection interface while still capturing the complete date.
+
+This is a deliberate adaptation to the digital medium rather than a literal recreation of the paper layout.
+
+---
+
+# Design Decisions
+
+The form was designed with the following principles:
+
+* **Preserve the original PDF's information**
+* **Maintain the required/optional distinction**
+* **Use appropriate XLSForm question types**
+* **Avoid unnecessary duplicate data entry**
+* **Use conditional logic where fields are context-dependent**
+* **Validate important user input**
+* **Keep informational/legal content visible**
+* **Provide digital signature capture**
+* **Make the form suitable for mobile data collection**
+
+The goal was not simply to reproduce the appearance of the PDF, but to translate its structure and rules into a functional digital form.
+
+---
+
+# Assumptions
+
+The following assumptions were made during implementation:
+
+* Only fields explicitly marked with `*` in the original PDF are treated as required.
+* "Unconsented" is represented using a `select_one yes_no` question rather than a standalone checkbox, as this is a standard XLSForm approach for a yes/no response.
+* "Reason for Risk Assessment" is represented using `select_multiple` because the PDF presents the options as independent checkboxes rather than mutually exclusive choices.
+* The Date of Birth fields were consolidated into a single `date` question to provide a more appropriate digital input mechanism.
+* The page-2 "Name of Person Being Assessed" is automatically derived from the page-1 name fields to satisfy the PDF's requirement that the information must match.
+
+---
+
+## Final Deliverables
+
+The repository contains the completed XLSForm and this README, along with the link to the video demonstration.
+
+The XLSForm can be reviewed through its `survey`, `choices`, and `settings` sheets to understand the implemented questions, choices, validation, conditional logic, calculations, and form configuration.
+
